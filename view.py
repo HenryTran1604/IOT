@@ -1,7 +1,9 @@
 from tkinter import *
 import time
 import cv2, os
-from webcam import *
+from model import *
+import urllib.request
+
 
 class GUI(Tk):
     def __init__(self):
@@ -11,9 +13,10 @@ class GUI(Tk):
         self.font = ("Arial", 15)
         self.curr_frame_time = 0
         self.prev_frame_time = 0
-        self.path = 0
-        self.cap = cv2.VideoCapture(self.path)
-        self.is_vehicle = False
+        self.video_url = 0
+        self.esp8266_url = "http://192.168.0.100"
+        self.cap = cv2.VideoCapture(self.video_url)
+        self.is_vehicle = True
         self.auto = True
         self.model = Model()
         self.init_frame_function()
@@ -32,8 +35,8 @@ class GUI(Tk):
         self.lbl_entrance = Label(self.frm_function, text='Cửa vào', font=self.font)
         self.lbl_exit = Label(self.frm_function, text='Cửa ra', font=self.font)
         self.btn_change_mode = Button(self.frm_function, text='Đổi', command=self.change_mode)
-        self.btn_entrance_open = Button(self.frm_entrance, text='MỞ', width=10)
-        self.btn_entrance_close = Button(self.frm_entrance, text='ĐÓNG', width=10)
+        self.btn_entrance_open = Button(self.frm_entrance, text='MỞ', width=10, command=self.open_entrance_barrier)
+        self.btn_entrance_close = Button(self.frm_entrance, text='ĐÓNG', width=10, command=self.close_entrance_barrier)
         self.btn_exit_open = Button(self.frm_exit, text='MỞ', width=10)
         self.btn_exit_close = Button(self.frm_exit, text='ĐÓNG', width=10)
         self.btn_end_program = Button(self.frm_function, text='END', width=20, bg='red')
@@ -82,14 +85,18 @@ class GUI(Tk):
             list_license_plates = set()
             if self.is_vehicle:
                 frame, list_license_plates = self.model.detect(ret, frame)
+                if len(list_license_plates) and list_license_plates[0] == '30G-79782':
+                    self.open_entrance_barrier()
+                    self.close_entrance_barrier()
+            
             photo = GUI.convert_image(frame)
 
             self.canvas.create_image(0, 0, image=photo, anchor=NW)
             self.canvas.image = photo
 
-            image_path = 'crop.jpg'
-            if os.path.exists(image_path):
-                crop_image = cv2.imread(image_path)
+            image_video_url = 'crop.jpg'
+            if os.path.exists(image_video_url):
+                crop_image = cv2.imread(image_video_url)
             else:
                 crop_image = cv2.imread('nf.png')
             crop_image = cv2.resize(crop_image, (300, 100))
@@ -107,8 +114,22 @@ class GUI(Tk):
 
 
     # -----------------------------function----------------------------
+    '''Control servo through HTTP request'''
+    def send_request(self, url):
+        n = urllib.request.urlopen(url) # send request to ESP
+
+    def open_entrance_barrier(self):
+        self.send_request(self.esp8266_url + "/openentrancebarrier")
+        print("barrier is opening")
+
+    def close_entrance_barrier(self):
+        self.send_request(self.esp8266_url + "/closeentrancebarrier")
+        print("barrier is closed")
+
+
+    '''change mode control'''
     def change_to_auto(self):
-        self.is_vehicle = True
+        # self.is_vehicle = True
         self.lbl_mode.config(text='Chế độ: Auto')
         for child in self.frm_entrance.winfo_children():
             child.configure(state='disable')
@@ -116,7 +137,7 @@ class GUI(Tk):
             child.configure(state='disable')
 
     def change_to_human(self):
-        self.is_vehicle = False
+        # self.is_vehicle = False
         self.lbl_mode.config(text='Chế độ: Human')
         for child in self.frm_entrance.winfo_children():
             child.configure(state='normal')
@@ -129,6 +150,10 @@ class GUI(Tk):
             self.change_to_auto()
         else:
             self.change_to_human()
+    
+
+
+    
 
 if __name__ == '__main__':
     a = GUI()

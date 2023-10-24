@@ -39,7 +39,7 @@ class Model:
                         break
                 if flag == 1:
                     break
-        return frame, list_read_plates
+        return frame, list(list_read_plates)
 # prev_frame_time = 0
 # new_frame_time = 0
 # path = 'http://192.168.0.100:4747/video'
