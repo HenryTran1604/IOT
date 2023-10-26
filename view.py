@@ -3,7 +3,8 @@ import time
 import cv2, os
 from model import *
 import urllib.request
-
+from dao import *
+from threading import Thread
 
 class GUI(Tk):
     def __init__(self):
@@ -16,8 +17,11 @@ class GUI(Tk):
         self.video_url = 0
         self.esp8266_url = "http://192.168.0.100"
         self.cap = cv2.VideoCapture(self.video_url)
-        self.is_vehicle = False
+        self.list_license_plate = get_all_license_plates()
+        self.is_vehicle = True
         self.auto = True
+        self.requesting = False # nếu đang gửi yêu cầu
+        self.curr_license_plate = str()
         self.model = Model()
         self.init_frame_function()
         self.config_frame()
@@ -82,12 +86,20 @@ class GUI(Tk):
             fps = 1 / (self.curr_frame_time - self.prev_frame_time)
             fps = int(fps)
             self.prev_frame_time = self.curr_frame_time
-            list_license_plates = set()
+            list_detected_license_plates = set()
             if self.is_vehicle:
-                frame, list_license_plates = self.model.detect(ret, frame)
-                if len(list_license_plates) and list_license_plates[0] == '30G-79782':
-                    self.open_entrance_barrier()
-                    self.close_entrance_barrier()
+                frame, list_detected_license_plates = self.model.detect(ret, frame)
+                if len(list_detected_license_plates) and list_detected_license_plates[0] in self.list_license_plate:
+                    if not self.requesting:
+                        self.requesting = True
+                        self.curr_license_plate = list_detected_license_plates[0]
+                        thread = Thread(target=self.open_entrance_barrier)
+                        thread.start()
+                else:
+                    if self.requesting: # nếu đang yêu cầu mà xe đã đi qua thì mới gửi request đóng cửa
+                        self.curr_license_plate = str()
+                        thread = Thread(target=self.close_entrance_barrier)
+                        thread.start()
             
             photo = GUI.convert_image(frame)
 
@@ -103,7 +115,7 @@ class GUI(Tk):
             crop_image_photo = GUI.convert_image(crop_image)
             self.lbl_license_plate_img.config(image=crop_image_photo)  # Cập nhật hình ảnh trên Label
             self.lbl_license_plate_img.image = crop_image_photo
-            self.lbl_license_plate_text.config(text= ', '.join(list_license_plates))
+            self.lbl_license_plate_text.config(text= ', '.join(list_detected_license_plates))
 
             self.canvas.create_text(50, 50, text=str(fps), font=self.font, fill="green")
             self.after(15, self.update_frame_camera)  
@@ -122,14 +134,21 @@ class GUI(Tk):
         self.send_request(self.esp8266_url + "/openentrancebarrier")
         print("barrier is opening")
 
+    
     def close_entrance_barrier(self):
-        self.send_request(self.esp8266_url + "/closeentrancebarrier")
-        print("barrier is closed")
+        self.requesting = False
+        time.sleep(3)
+        if not self.requesting: # sau 2 giây mà biển số vẫn detect ra không trong csdl thì đóng cửa
+            self.send_request(self.esp8266_url + "/closeentrancebarrier")
+            print("barrier is closed")
+
+    def control_barrier(self):
+        self.open_entrance_barrier()
 
 
     '''change mode control'''
     def change_to_auto(self):
-        # self.is_vehicle = True
+        self.is_vehicle = True
         self.lbl_mode.config(text='Chế độ: Auto')
         for child in self.frm_entrance.winfo_children():
             child.configure(state='disable')
@@ -137,7 +156,7 @@ class GUI(Tk):
             child.configure(state='disable')
 
     def change_to_human(self):
-        # self.is_vehicle = False
+        self.is_vehicle = False
         self.lbl_mode.config(text='Chế độ: Human')
         for child in self.frm_entrance.winfo_children():
             child.configure(state='normal')
