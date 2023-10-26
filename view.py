@@ -15,7 +15,7 @@ class GUI(Tk):
         self.curr_frame_time = 0
         self.prev_frame_time = 0
         self.video_url = 0
-        self.esp8266_url = "http://192.168.0.100"
+        self.esp8266_url = "http://192.168.174.48"
         self.cap = cv2.VideoCapture(self.video_url)
         self.list_license_plate = get_all_license_plates()
         self.is_vehicle = True
@@ -137,7 +137,8 @@ class GUI(Tk):
     
     def close_entrance_barrier(self):
         self.requesting = False
-        time.sleep(3)
+        if self.auto:
+            time.sleep(3)
         if not self.requesting: # sau 2 giây mà biển số vẫn detect ra không trong csdl thì đóng cửa
             self.send_request(self.esp8266_url + "/closeentrancebarrier")
             print("barrier is closed")

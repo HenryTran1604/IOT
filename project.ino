@@ -1,14 +1,17 @@
 #include <Wire.h>
 #include <LiquidCrystal_I2C.h>
+#include <FirebaseArduino.h> 
 #include <ESP8266WiFi.h>
 #include <Servo.h>
+#define FIREBASE_HOST "iotn7-e47bc-default-rtdb.firebaseio.com"
+#define FIREBASE_AUTH "QPRjTyKXsSK5DWVIyboqFNkBNoR0lPYQajmxnSMn"
 
-const char* ssid = "Room cho nguoi huong noi";
+const char* ssid = "TQH";
 const char* password = "123456789";
 const char* empty = "Empt";
 const char* fill = "fill";
 const int ir_1 = D3;
-const int ir_2 = D4;
+const int ir_2 = D7;
 const int ir_3 = D5;
 const int servo_pin = D6;
 int counter = 0;
@@ -72,29 +75,36 @@ void controlBarrier() {
       Serial.println("Entrance barrier is opening now");
     } else if (request.indexOf("closeentrancebarrier") != -1) {
       closeEntranceBarrier();
-
-      client.println("HTTP/1.1 200 OK");
       Serial.println("LED IS OFF NOW");
     }
+    client.println("HTTP/1.1 200 OK");
     Serial.print("Client Disconnected");
     Serial.println("===========================================================");
     Serial.println("                              ");
   }
 }
+void updateToFirebase() {
+}
 void readSensors() {
   s1 = 0, s2 = 0, s3 = 0;
 
-  if (digitalRead(ir_1) == 0) { s1 = 1; }
-  if (digitalRead(ir_2) == 0) { s2 = 1; }
-  if (digitalRead(ir_3) == 0) { s3 = 1; }
-  
+  if (digitalRead(ir_1) == 0) {
+    s1 = 1;
+  }
+  if (digitalRead(ir_2) == 0) {
+    s2 = 1;
+  }
+  if (digitalRead(ir_3) == 0) {
+    s3 = 1;
+  }
 }
 void setup() {
-  Serial.begin(115200);
+  Serial.begin(9600);
   initServo();
   initSensors();
   initLCD();
   initWifi();
+  Firebase.begin(FIREBASE_HOST, FIREBASE_AUTH);
 }
 
 void updateLCD() {
@@ -112,14 +122,26 @@ void updateLCD() {
     lcd.print("S2:Empt");
   }
 
-  lcd.setCursor(5, 1);
+  lcd.setCursor(4, 1);
   if (s3 == 1) {
     lcd.print("S3:Fill ");
   } else {
     lcd.print("S3:Empty");
   }
 }
+void pushToFirebase() {
+  Firebase.setInt("slot1", s1);   
+  Firebase.setInt("slot2", s2);  
+  Firebase.setInt("slot3", s3);
+  if (Firebase.failed()) {
+
+    //Serial.print("pushing /logs failed:");
+    Serial.println(Firebase.error());
+    return;
+  }
+}
 void loop() {
   updateLCD();
   controlBarrier();
+  pushToFirebase();
 }
