@@ -10,3 +10,4 @@ requests
 pandas
 seaborn
 IPython
+mysql-connector-python

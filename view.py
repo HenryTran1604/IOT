@@ -16,7 +16,7 @@ class GUI(Tk):
         self.video_url = 0
         self.esp8266_url = "http://192.168.0.100"
         self.cap = cv2.VideoCapture(self.video_url)
-        self.is_vehicle = True
+        self.is_vehicle = False
         self.auto = True
         self.model = Model()
         self.init_frame_function()
