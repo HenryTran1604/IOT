@@ -1,5 +1,5 @@
 from tkinter import *
-import time
+import time, datetime
 import cv2, os
 from model import *
 import urllib.request
@@ -7,8 +7,10 @@ from dao import *
 from threading import Thread
 
 class GUI(Tk):
-    def __init__(self):
+    def __init__(self, gate):
         Tk.__init__(self)
+        self.title('Cửa vào' if gate == 0 else "Cửa ra")
+        self.gate = gate
         self.frm_camera = Frame(self)
         self.frm_function = Frame(self, borderwidth=2, relief='solid')
         self.font = ("Arial", 15)
@@ -17,8 +19,8 @@ class GUI(Tk):
         self.video_url = 0
         self.esp8266_url = "http://192.168.174.48"
         self.cap = cv2.VideoCapture(self.video_url)
-        self.list_license_plate = get_all_license_plates()
-        self.is_vehicle = True
+        self.dao = DAO()
+        self.registered_license_plates = dao.find_all_license_plates()
         self.auto = True
         self.requesting = False # nếu đang gửi yêu cầu
         self.curr_license_plate = str()
@@ -87,9 +89,9 @@ class GUI(Tk):
             fps = int(fps)
             self.prev_frame_time = self.curr_frame_time
             list_detected_license_plates = set()
-            if self.is_vehicle:
+            if self.auto:
                 frame, list_detected_license_plates = self.model.detect(ret, frame)
-                if len(list_detected_license_plates) and list_detected_license_plates[0] in self.list_license_plate:
+                if len(list_detected_license_plates) and list_detected_license_plates[0] in self.registered_license_plates:
                     if not self.requesting:
                         self.requesting = True
                         self.curr_license_plate = list_detected_license_plates[0]
@@ -97,12 +99,10 @@ class GUI(Tk):
                         thread.start()
                 else:
                     if self.requesting: # nếu đang yêu cầu mà xe đã đi qua thì mới gửi request đóng cửa
-                        self.curr_license_plate = str()
                         thread = Thread(target=self.close_entrance_barrier)
                         thread.start()
             
             photo = GUI.convert_image(frame)
-
             self.canvas.create_image(0, 0, image=photo, anchor=NW)
             self.canvas.image = photo
 
@@ -128,7 +128,7 @@ class GUI(Tk):
     # -----------------------------function----------------------------
     '''Control servo through HTTP request'''
     def send_request(self, url):
-        n = urllib.request.urlopen(url) # send request to ESP
+        urllib.request.urlopen(url) # send request to ESP
 
     def open_entrance_barrier(self):
         self.send_request(self.esp8266_url + "/openentrancebarrier")
@@ -141,28 +141,27 @@ class GUI(Tk):
             time.sleep(3)
         if not self.requesting: # sau 2 giây mà biển số vẫn detect ra không trong csdl thì đóng cửa
             self.send_request(self.esp8266_url + "/closeentrancebarrier")
+            self.dao.add_parking(self.curr_license_plate, datetime.datetime.now())
+            
             print("barrier is closed")
 
-    def control_barrier(self):
-        self.open_entrance_barrier()
 
+    def change_frame_state(self, frm, mode):
+        for child in frm.winfo_children():
+            child.configure(state=mode)
 
     '''change mode control'''
     def change_to_auto(self):
-        self.is_vehicle = True
         self.lbl_mode.config(text='Chế độ: Auto')
-        for child in self.frm_entrance.winfo_children():
-            child.configure(state='disable')
-        for child in self.frm_exit.winfo_children():
-            child.configure(state='disable')
+        self.change_frame_state(self.frm_entrance, 'disable')
+        self.change_frame_state(self.frm_exit, 'disable')
 
     def change_to_human(self):
-        self.is_vehicle = False
         self.lbl_mode.config(text='Chế độ: Human')
-        for child in self.frm_entrance.winfo_children():
-            child.configure(state='normal')
-        for child in self.frm_exit.winfo_children():
-            child.configure(state='normal')
+        if self.gate == 0:
+            self.change_frame_state(self.frm_entrance, 'normal')
+        else:
+            self.change_frame_state(self.frm_exit, 'normal')
 
     def change_mode(self):
         self.auto = not self.auto
@@ -171,10 +170,6 @@ class GUI(Tk):
         else:
             self.change_to_human()
     
-
-
-    
-
 if __name__ == '__main__':
-    a = GUI()
+    a = GUI(1)
     a.run()
