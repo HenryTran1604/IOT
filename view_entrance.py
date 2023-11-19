@@ -17,11 +17,11 @@ class GUI(Tk):
         self.curr_frame_time = 0
         self.prev_frame_time = 0
         self.video_url = 0
-        self.esp8266_url = "http://192.168.174.48"
+        self.esp8266_url = "http://192.168.4.100"
         self.cap = cv2.VideoCapture(self.video_url)
         self.dao = DAO()
         self.registered_license_plates = dao.find_all_license_plates()
-        self.auto = True
+        self.auto = 1
         self.requesting = False # nếu đang gửi yêu cầu
         self.curr_license_plate = str()
         self.model = Model()
@@ -131,18 +131,22 @@ class GUI(Tk):
         urllib.request.urlopen(url) # send request to ESP
 
     def open_entrance_barrier(self):
-        self.send_request(self.esp8266_url + "/openentrancebarrier")
+        print(f"/entrance?state=open&mode={self.auto}&message=allow")
+
+        self.send_request(self.esp8266_url + f"/entrance?state=open&mode={self.auto}&message=allow")
         print("barrier is opening")
 
     
     def close_entrance_barrier(self):
         self.requesting = False
-        if self.auto:
-            time.sleep(3)
+        if self.auto == 1:
+            time.sleep(2)
         if not self.requesting: # sau 2 giây mà biển số vẫn detect ra không trong csdl thì đóng cửa
-            self.send_request(self.esp8266_url + "/closeentrancebarrier")
-            self.dao.add_parking(self.curr_license_plate, datetime.datetime.now())
-            
+            print(f"/entrance?state=close&mode={self.auto}&message=allow")
+            self.send_request(self.esp8266_url + f"/entrance?state=close&mode={self.auto}&message=allow")
+            now = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            if self.auto == 1:
+                self.dao.add_parking(self.curr_license_plate, now)
             print("barrier is closed")
 
 
@@ -164,12 +168,12 @@ class GUI(Tk):
             self.change_frame_state(self.frm_exit, 'normal')
 
     def change_mode(self):
-        self.auto = not self.auto
+        self.auto = 1 - self.auto
         if self.auto:
             self.change_to_auto()
         else:
             self.change_to_human()
     
 if __name__ == '__main__':
-    a = GUI(1)
+    a = GUI(0)
     a.run()

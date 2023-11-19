@@ -17,20 +17,23 @@ class DAO:
         return license_plates
 
     def find_license_plate_by_name_and_status(self, licensePlate, status):
-        stm = f'SELECT * from parking where licensePlate = "{licensePlate}" and status = {status}'
-        self.cursor.execute(stm)
+        stm = 'SELECT * from parking where licensePlate = (%s) and status = (%s)'
+        self.cursor.execute(stm, (licensePlate, status))
         result = self.cursor.fetchall()
         return len(result) != 0
     
     def add_parking(self, licensePlate, timeIn):
-        stm = f'INSERT INTO parking(status, timeIn, licensePlate) VALUES(0, {timeIn}, {licensePlate})'
-        self.cursor.execute(stm)
+        stm = 'INSERT INTO parking(status, timeIn, licensePlate) VALUES(0, %s, %s)'
+        self.cursor.execute(stm, (timeIn, licensePlate))
+        self.db.commit()
         row = self.cursor.rowcount
+        print(row)
         return row
     
     def update_parking(self, licensePlate, timeOut):
-        stm = f'UPDATE parking SET status = 1, timeOut={timeOut} WHERE licensePlate = {licensePlate}'
+        stm = f'UPDATE parking SET status = 1, timeOut="{timeOut}" WHERE licensePlate = "{licensePlate}"'
         self.cursor.execute(stm)
+        self.db.commit()
         row = self.cursor.rowcount
         return row
 
