@@ -3,7 +3,7 @@ import time, datetime
 import cv2, os
 from model import *
 import urllib.request
-from dao import *
+from service import *
 from threading import Thread
 
 class GUI(Tk):
@@ -16,11 +16,10 @@ class GUI(Tk):
         self.font = ("Arial", 15)
         self.curr_frame_time = 0
         self.prev_frame_time = 0
-        self.video_url = 'http://192.168.0.100:4747/video'
+        self.video_url = 0
         self.esp8266_url = "http://192.168.0.102"
         self.cap = cv2.VideoCapture(self.video_url)
-        self.dao = DAO()
-        self.registered_license_plates = dao.find_all_license_plates()
+        self.service = Service()
         self.auto = 1
         self.valid_requesting = False # nếu đang gửi yêu cầu
         self.curr_license_plate = str()
@@ -92,8 +91,8 @@ class GUI(Tk):
             if self.auto:
                 frame, list_detected_license_plates = self.model.detect(ret, frame)
                 if len(list_detected_license_plates): 
-                    if self.dao.find_car_by_license_plate(list_detected_license_plates[0]):
-                        if self.dao.find_parking_by_license_plate_and_status(list_detected_license_plates[0], 0):
+                    if self.service.check_car_by_license_plate(list_detected_license_plates[0]):
+                        if self.service.check_parking_by_license_plate_and_status(list_detected_license_plates[0], 0):
                             if not self.valid_requesting:
                                 self.valid_requesting = True
                                 self.curr_license_plate = list_detected_license_plates[0]
@@ -128,14 +127,11 @@ class GUI(Tk):
 
 
     # -----------------------------function----------------------------
-    '''Control servo through HTTP request'''
-    def send_request(self, url):
-        urllib.request.urlopen(url) # send request to ESP
 
     def open_exit_barrier(self):
         print(f"/exit?state=open&mode={self.auto}")
 
-        self.send_request(self.esp8266_url + f"/exit?state=open&mode={self.auto}")
+        self.service.send_request(self.esp8266_url + f"/exit?state=open&mode={self.auto}")
         print("barrier is opening")
 
     
@@ -145,7 +141,7 @@ class GUI(Tk):
             time.sleep(2)
         if not self.valid_requesting: # sau 2 giây mà biển số vẫn detect ra không trong csdl thì đóng cửa
             print(f"/exit?state=close&mode={self.auto}")
-            self.send_request(self.esp8266_url + f"/exit?state=close&mode={self.auto}")
+            self.service.send_request(self.esp8266_url + f"/exit?state=close&mode={self.auto}")
             now = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             if self.auto == 1:
                 self.dao.update_parking(self.curr_license_plate, now)
