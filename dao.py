@@ -13,10 +13,15 @@ class DAO:
         stm = 'SELECT licensePlate FROM car'
         self.cursor.execute(stm)
         license_plates = [x[0] for x in self.cursor.fetchall()]
-        print(license_plates)
         return license_plates
+    
+    def find_car_by_license_plate(self, licensePlate):
+        stm = 'SELECT * FROM car WHERE licensePlate = %s'
+        self.cursor.execute(stm, (licensePlate, ))
+        result = self.cursor.fetchall()
+        return len(result) != 0
 
-    def find_license_plate_by_name_and_status(self, licensePlate, status):
+    def find_parking_by_license_plate_and_status(self, licensePlate, status):
         stm = 'SELECT * from parking where licensePlate = (%s) and status = (%s)'
         self.cursor.execute(stm, (licensePlate, status))
         result = self.cursor.fetchall()
@@ -31,11 +36,12 @@ class DAO:
         return row
     
     def update_parking(self, licensePlate, timeOut):
-        stm = f'UPDATE parking SET status = 1, timeOut="{timeOut}" WHERE licensePlate = "{licensePlate}"'
+        print(timeOut)
+        stm = f'UPDATE parking SET status = 1, timeOut="{timeOut}" WHERE licensePlate = "{licensePlate}" AND status = 0'
         self.cursor.execute(stm)
         self.db.commit()
         row = self.cursor.rowcount
         return row
 
 dao = DAO()
-print(dao.find_license_plate_by_name_and_status('36A-88888', 1))
+print(dao.find_parking_by_license_plate_and_status('36A-88888', 1))

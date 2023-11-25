@@ -17,12 +17,12 @@ class GUI(Tk):
         self.curr_frame_time = 0
         self.prev_frame_time = 0
         self.video_url = 0
-        self.esp8266_url = "http://192.168.4.100"
+        self.esp8266_url = "http://192.168.0.102"
         self.cap = cv2.VideoCapture(self.video_url)
         self.dao = DAO()
-        self.registered_license_plates = dao.find_all_license_plates()
         self.auto = 1
-        self.requesting = False # nếu đang gửi yêu cầu
+        self.valid_requesting = False # nếu đang gửi yêu cầu hợp lệ
+        self.invalid_requesting = False
         self.curr_license_plate = str()
         self.model = Model()
         self.init_frame_function()
@@ -91,16 +91,31 @@ class GUI(Tk):
             list_detected_license_plates = set()
             if self.auto:
                 frame, list_detected_license_plates = self.model.detect(ret, frame)
-                if len(list_detected_license_plates) and list_detected_license_plates[0] in self.registered_license_plates:
-                    if not self.requesting:
-                        self.requesting = True
-                        self.curr_license_plate = list_detected_license_plates[0]
-                        thread = Thread(target=self.open_entrance_barrier)
-                        thread.start()
+                if len(list_detected_license_plates): 
+                    if self.dao.find_car_by_license_plate(list_detected_license_plates[0]):
+                        if not self.dao.find_parking_by_license_plate_and_status(list_detected_license_plates[0], 0):
+                            if not self.valid_requesting:
+                                self.valid_requesting = True
+                                self.curr_license_plate = list_detected_license_plates[0]
+                                thread = Thread(target=self.open_entrance_barrier, args=('allow', ))
+                                thread.start()
+                        else:
+                            if not self.invalid_requesting:
+                                self.invalid_requesting = True
+                                thread = Thread(target=self.open_entrance_barrier, args=('Already_inside', ))
+                                thread.start()
+                    else:
+                        if not self.invalid_requesting:
+                            self.invalid_requesting = True
+                            thread = Thread(target=self.open_entrance_barrier, args=('Not_registered', ))
+                            thread.start()
                 else:
-                    if self.requesting: # nếu đang yêu cầu mà xe đã đi qua thì mới gửi request đóng cửa
+                    if self.valid_requesting: # nếu đang yêu cầu mà xe đã đi qua thì mới gửi request đóng cửa
                         thread = Thread(target=self.close_entrance_barrier)
                         thread.start()
+
+                    if self.invalid_requesting:
+                        self.invalid_requesting = False
             
             photo = GUI.convert_image(frame)
             self.canvas.create_image(0, 0, image=photo, anchor=NW)
@@ -130,18 +145,18 @@ class GUI(Tk):
     def send_request(self, url):
         urllib.request.urlopen(url) # send request to ESP
 
-    def open_entrance_barrier(self):
-        print(f"/entrance?state=open&mode={self.auto}&message=allow")
+    def open_entrance_barrier(self, message):
+        print(f"/entrance?state=open&mode={self.auto}&message={message}")
 
-        self.send_request(self.esp8266_url + f"/entrance?state=open&mode={self.auto}&message=allow")
+        self.send_request(self.esp8266_url + f"/entrance?state=open&mode={self.auto}&message={message}")
         print("barrier is opening")
 
     
     def close_entrance_barrier(self):
-        self.requesting = False
+        self.valid_requesting = False
         if self.auto == 1:
             time.sleep(2)
-        if not self.requesting: # sau 2 giây mà biển số vẫn detect ra không trong csdl thì đóng cửa
+        if not self.valid_requesting: # sau 2 giây mà biển số vẫn detect ra không trong csdl thì đóng cửa
             print(f"/entrance?state=close&mode={self.auto}&message=allow")
             self.send_request(self.esp8266_url + f"/entrance?state=close&mode={self.auto}&message=allow")
             now = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
