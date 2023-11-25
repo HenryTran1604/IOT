@@ -16,7 +16,7 @@ class GUI(Tk):
         self.font = ("Arial", 15)
         self.curr_frame_time = 0
         self.prev_frame_time = 0
-        self.video_url = 0
+        self.video_url = 'http://192.168.0.100:4747/video'
         self.esp8266_url = "http://192.168.0.102"
         self.cap = cv2.VideoCapture(self.video_url)
         self.dao = DAO()
