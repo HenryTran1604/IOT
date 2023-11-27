@@ -17,7 +17,7 @@ class GUI(Tk):
         self.curr_frame_time = 0
         self.prev_frame_time = 0
         self.video_url = 0
-        self.esp8266_url = "http://192.168.250.48"
+        self.esp8266_url = "http://192.168.0.102"
         self.cap = cv2.VideoCapture(self.video_url)
         self.service = Service()
         self.auto = 1

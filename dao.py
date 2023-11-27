@@ -48,5 +48,5 @@ class DAO:
         self.cursor.execute(stm)
         result = self.cursor.fetchall()
         return [[x for x in record] for record in result]
-# dao = DAO()
-# print(*dao.find_all_parkings(), sep='\n')
+dao = DAO()
+print(*dao.find_all_parkings(), sep='\n')

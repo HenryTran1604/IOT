@@ -144,7 +144,7 @@ class GUI(Tk):
             self.service.send_request(self.esp8266_url + f"/exit?state=close&mode={self.auto}")
             now = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             if self.auto == 1:
-                self.dao.update_parking(self.curr_license_plate, now)
+                self.service.update_parking(self.curr_license_plate, now)
             print("barrier is closed")
 
 
