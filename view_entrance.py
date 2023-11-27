@@ -17,7 +17,7 @@ class GUI(Tk):
         self.curr_frame_time = 0
         self.prev_frame_time = 0
         self.video_url = 0
-        self.esp8266_url = "http://192.168.0.102"
+        self.esp8266_url = "http://192.168.250.48"
         self.cap = cv2.VideoCapture(self.video_url)
         self.service = Service()
         self.auto = 1
@@ -102,10 +102,10 @@ class GUI(Tk):
                         else:
                             if not self.invalid_requesting:
                                 self.invalid_requesting = True
-                                thread = Thread(target=self.open_entrance_barrier, args=('Already_inside', ))
-                                thread.start()
+                                # thread = Thread(target=self.open_entrance_barrier, args=('Already_inside', ))
+                                # thread.start()
                     else:
-                        if not self.invalid_requesting:
+                        if not self.invalid_requesting and not self.valid_requesting:
                             self.invalid_requesting = True
                             thread = Thread(target=self.open_entrance_barrier, args=('Not_registered', ))
                             thread.start()

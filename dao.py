@@ -42,6 +42,11 @@ class DAO:
         self.db.commit()
         row = self.cursor.rowcount
         return row
-
-dao = DAO()
-print(dao.find_parking_by_license_plate_and_status('36A-88888', 1))
+    
+    def find_all_parkings(self):
+        stm = 'SELECT * FROM parking'
+        self.cursor.execute(stm)
+        result = self.cursor.fetchall()
+        return [[x for x in record] for record in result]
+# dao = DAO()
+# print(*dao.find_all_parkings(), sep='\n')
