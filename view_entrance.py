@@ -16,15 +16,18 @@ class GUI(Tk):
         self.font = ("Arial", 15)
         self.curr_frame_time = 0
         self.prev_frame_time = 0
-        self.video_url = 0
+        self.video_url = 'http://192.168.0.100:4747/video' #droidcam
+        #self.video_url = 'http://192.168.0.100:4747/videofeed' # ipwebcam
+        #self.video_url = 0
         self.esp8266_url = "http://192.168.0.102"
-        self.cap = cv2.VideoCapture(self.video_url)
+        
         self.service = Service()
-        self.auto = 1
+        self.auto = 0
         self.valid_requesting = False # nếu đang gửi yêu cầu hợp lệ
         self.invalid_requesting = False
         self.curr_license_plate = str()
         self.model = Model()
+        self.cap = cv2.VideoCapture(self.video_url)
         self.init_frame_function()
         self.config_frame()
         self.align_components()
@@ -83,6 +86,7 @@ class GUI(Tk):
 
     def update_frame_camera(self):
         ret, frame = self.cap.read()
+        frame = frame[10:480, :640]
         if ret:
             self.curr_frame_time = time.time()
             fps = 1 / (self.curr_frame_time - self.prev_frame_time)
@@ -107,8 +111,8 @@ class GUI(Tk):
                     else:
                         if not self.invalid_requesting and not self.valid_requesting:
                             self.invalid_requesting = True
-                            thread = Thread(target=self.open_entrance_barrier, args=('Not_registered', ))
-                            thread.start()
+                            #thread = Thread(target=self.open_entrance_barrier, args=('Not_registered', ))
+                            #thread.start()
                 else:
                     if self.valid_requesting: # nếu đang yêu cầu mà xe đã đi qua thì mới gửi request đóng cửa
                         thread = Thread(target=self.close_entrance_barrier)

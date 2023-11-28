@@ -13,7 +13,7 @@ class Model:
 # load model
         self.yolo_LP_detect = torch.hub.load('yolov5', 'custom', path='model/LP_detector_nano_61.pt', force_reload=True, source='local')
         self.yolo_license_plate = torch.hub.load('yolov5', 'custom', path='model/LP_ocr_nano_62.pt', force_reload=True, source='local')
-        self.yolo_license_plate.conf = 0.60
+        self.yolo_license_plate.conf = 0.7
     
     def detect(self, ret, frame):
         plates = self.yolo_LP_detect(frame, size=640)
