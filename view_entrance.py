@@ -40,7 +40,7 @@ class GUI(Tk):
         self.lbl_license_plate_img = Label(self.frm_function, text='Check')
         self.lbl_license_plate = Label(self.frm_function, text='Biển số xe', font=self.font)
         self.lbl_license_plate_text = Label(self.frm_function, text='')
-        self.lbl_mode = Label(self.frm_function, text='Chế độ: Auto', font=self.font, anchor='e')
+        self.lbl_mode = Label(self.frm_function, text='Chế độ: Manual', font=self.font, anchor='e')
         self.lbl_entrance = Label(self.frm_function, text='Cửa vào', font=self.font)
         self.lbl_exit = Label(self.frm_function, text='Cửa ra', font=self.font)
         self.btn_change_mode = Button(self.frm_function, text='Đổi', command=self.change_mode)
@@ -83,6 +83,34 @@ class GUI(Tk):
         h, w = img.shape[:2]
         data = f'P6 {w} {h} 255 '.encode() + img[..., ::-1].tobytes()
         return PhotoImage(width=w, height=h, data=data, format='PPM')
+    
+    def detect(self, ret, frame):
+        frame, list_detected_license_plates = self.model.detect(ret, frame)
+        if len(list_detected_license_plates): 
+            if self.service.check_car_by_license_plate(list_detected_license_plates[0]):
+                if not self.service.check_parking_by_license_plate_and_status(list_detected_license_plates[0], 0):
+                    if not self.valid_requesting:
+                        self.valid_requesting = True
+                        self.curr_license_plate = list_detected_license_plates[0]
+                        thread = Thread(target=self.open_entrance_barrier, args=('allow', ))
+                        thread.start()
+                else:
+                    if not self.invalid_requesting:
+                        self.invalid_requesting = True
+                        # thread = Thread(target=self.open_entrance_barrier, args=('Already_inside', ))
+                        # thread.start()
+            else:
+                if not self.invalid_requesting and not self.valid_requesting:
+                    self.invalid_requesting = True
+                    #thread = Thread(target=self.open_entrance_barrier, args=('Not_registered', ))
+                    #thread.start()
+        else:
+            if self.valid_requesting: # nếu đang yêu cầu mà xe đã đi qua thì mới gửi request đóng cửa
+                thread = Thread(target=self.close_entrance_barrier)
+                thread.start()
+
+            if self.invalid_requesting:
+                self.invalid_requesting = False
 
     def update_frame_camera(self):
         ret, frame = self.cap.read()
@@ -94,33 +122,7 @@ class GUI(Tk):
             self.prev_frame_time = self.curr_frame_time
             list_detected_license_plates = set()
             if self.auto:
-                frame, list_detected_license_plates = self.model.detect(ret, frame)
-                if len(list_detected_license_plates): 
-                    if self.service.check_car_by_license_plate(list_detected_license_plates[0]):
-                        if not self.service.check_parking_by_license_plate_and_status(list_detected_license_plates[0], 0):
-                            if not self.valid_requesting:
-                                self.valid_requesting = True
-                                self.curr_license_plate = list_detected_license_plates[0]
-                                thread = Thread(target=self.open_entrance_barrier, args=('allow', ))
-                                thread.start()
-                        else:
-                            if not self.invalid_requesting:
-                                self.invalid_requesting = True
-                                # thread = Thread(target=self.open_entrance_barrier, args=('Already_inside', ))
-                                # thread.start()
-                    else:
-                        if not self.invalid_requesting and not self.valid_requesting:
-                            self.invalid_requesting = True
-                            #thread = Thread(target=self.open_entrance_barrier, args=('Not_registered', ))
-                            #thread.start()
-                else:
-                    if self.valid_requesting: # nếu đang yêu cầu mà xe đã đi qua thì mới gửi request đóng cửa
-                        thread = Thread(target=self.close_entrance_barrier)
-                        thread.start()
-
-                    if self.invalid_requesting:
-                        self.invalid_requesting = False
-            
+                list_detected_license_plates = self.detect(ret, frame)
             photo = GUI.convert_image(frame)
             self.canvas.create_image(0, 0, image=photo, anchor=NW)
             self.canvas.image = photo
@@ -175,7 +177,7 @@ class GUI(Tk):
         self.change_frame_state(self.frm_exit, 'disable')
 
     def change_to_human(self):
-        self.lbl_mode.config(text='Chế độ: Human')
+        self.lbl_mode.config(text='Chế độ: Manual')
         if self.gate == 0:
             self.change_frame_state(self.frm_entrance, 'normal')
         else:

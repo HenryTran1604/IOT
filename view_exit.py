@@ -16,14 +16,15 @@ class GUI(Tk):
         self.font = ("Arial", 15)
         self.curr_frame_time = 0
         self.prev_frame_time = 0
-        self.video_url = 0
+        self.video_url = 'http:192.168.0.100:4747/video'
         self.esp8266_url = "http://192.168.0.102"
-        self.cap = cv2.VideoCapture(self.video_url)
+        
         self.service = Service()
         self.auto = 1
         self.valid_requesting = False # nếu đang gửi yêu cầu
         self.curr_license_plate = str()
         self.model = Model()
+        self.cap = cv2.VideoCapture(self.video_url)
         self.init_frame_function()
         self.config_frame()
         self.align_components()
@@ -79,9 +80,26 @@ class GUI(Tk):
         h, w = img.shape[:2]
         data = f'P6 {w} {h} 255 '.encode() + img[..., ::-1].tobytes()
         return PhotoImage(width=w, height=h, data=data, format='PPM')
+    
+    def detect(self, ret, frame):
+        frame, list_detected_license_plates = self.model.detect(ret, frame)
+        if len(list_detected_license_plates): 
+            if self.service.check_car_by_license_plate(list_detected_license_plates[0]):
+                if self.service.check_parking_by_license_plate_and_status(list_detected_license_plates[0], 0):
+                    if not self.valid_requesting:
+                        self.valid_requesting = True
+                        self.curr_license_plate = list_detected_license_plates[0]
+                        thread = Thread(target=self.open_exit_barrier)
+                        thread.start()
+        else:
+            if self.valid_requesting: # nếu đang yêu cầu mà xe đã đi qua thì mới gửi request đóng cửa
+                thread = Thread(target=self.close_exit_barrier)
+                thread.start()
+        return list_detected_license_plates
 
     def update_frame_camera(self):
         ret, frame = self.cap.read()
+        frame = frame[10:480, :640]
         if ret:
             self.curr_frame_time = time.time()
             fps = 1 / (self.curr_frame_time - self.prev_frame_time)
@@ -89,19 +107,7 @@ class GUI(Tk):
             self.prev_frame_time = self.curr_frame_time
             list_detected_license_plates = set()
             if self.auto:
-                frame, list_detected_license_plates = self.model.detect(ret, frame)
-                if len(list_detected_license_plates): 
-                    if self.service.check_car_by_license_plate(list_detected_license_plates[0]):
-                        if self.service.check_parking_by_license_plate_and_status(list_detected_license_plates[0], 0):
-                            if not self.valid_requesting:
-                                self.valid_requesting = True
-                                self.curr_license_plate = list_detected_license_plates[0]
-                                thread = Thread(target=self.open_exit_barrier)
-                                thread.start()
-                else:
-                    if self.valid_requesting: # nếu đang yêu cầu mà xe đã đi qua thì mới gửi request đóng cửa
-                        thread = Thread(target=self.close_exit_barrier)
-                        thread.start()
+                list_detected_license_plates = self.detect(ret, frame)
             
             photo = GUI.convert_image(frame)
             self.canvas.create_image(0, 0, image=photo, anchor=NW)
