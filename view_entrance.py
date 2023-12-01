@@ -111,6 +111,7 @@ class GUI(Tk):
 
             if self.invalid_requesting:
                 self.invalid_requesting = False
+        return list_detected_license_plates
 
     def update_frame_camera(self):
         ret, frame = self.cap.read()
