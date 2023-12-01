@@ -2,6 +2,7 @@ yolov5/
 test_image/
 check_cache/
 /draw_image.py
+__pycache__/
 /test.py
 /res.jpg
 cache.jpg
