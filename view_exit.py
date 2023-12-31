@@ -2,7 +2,6 @@ from tkinter import *
 import time, datetime
 import cv2, os
 from model import *
-import urllib.request
 from service import *
 from threading import Thread
 
@@ -16,7 +15,7 @@ class GUI(Tk):
         self.font = ("Arial", 15)
         self.curr_frame_time = 0
         self.prev_frame_time = 0
-        self.video_url = 'http:192.168.0.100:4747/video'
+        self.video_url = 0
         self.esp8266_url = "http://192.168.0.102"
         
         self.service = Service()

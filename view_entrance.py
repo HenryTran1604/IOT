@@ -16,9 +16,9 @@ class GUI(Tk):
         self.font = ("Arial", 15)
         self.curr_frame_time = 0
         self.prev_frame_time = 0
-        self.video_url = 'http://192.168.0.100:4747/video' #droidcam
+        #self.video_url = 'http://192.168.0.102:4747/video' #droidcam
         #self.video_url = 'http://192.168.0.100:4747/videofeed' # ipwebcam
-        #self.video_url = 0
+        self.video_url = 0
         self.esp8266_url = "http://192.168.0.102"
         
         self.service = Service()
@@ -44,7 +44,7 @@ class GUI(Tk):
         self.lbl_entrance = Label(self.frm_function, text='Cửa vào', font=self.font)
         self.lbl_exit = Label(self.frm_function, text='Cửa ra', font=self.font)
         self.btn_change_mode = Button(self.frm_function, text='Đổi', command=self.change_mode)
-        self.btn_entrance_open = Button(self.frm_entrance, text='MỞ', width=10, command=self.open_entrance_barrier)
+        self.btn_entrance_open = Button(self.frm_entrance, text='MỞ', width=10, command= self.open_entrance_barrier)
         self.btn_entrance_close = Button(self.frm_entrance, text='ĐÓNG', width=10, command=self.close_entrance_barrier)
         self.btn_exit_open = Button(self.frm_exit, text='MỞ', width=10)
         self.btn_exit_close = Button(self.frm_exit, text='ĐÓNG', width=10)
@@ -148,7 +148,7 @@ class GUI(Tk):
 
 
     # -----------------------------function----------------------------
-    def open_entrance_barrier(self, message):
+    def open_entrance_barrier(self, message = "allow"):
         print(f"/entrance?state=open&mode={self.auto}&message={message}")
         self.service.send_request(self.esp8266_url + f"/entrance?state=open&mode={self.auto}&message={message}")
         print("barrier is opening")
